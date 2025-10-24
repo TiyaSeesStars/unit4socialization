@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Socialization — Unit 4 Study Game</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#7c5cff; --accent2:#00d4ff;
+    --muted:#97a0b3; --good:#26d07b; --bad:#ff6b6b; --glass: rgba(255,255,255,0.04);
+    --radius:14px; --sans: "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; font-family:var(--sans); background:
+    radial-gradient(1000px 600px at 10% 10%, rgba(124,92,255,0.08), transparent),
+    linear-gradient(180deg,#061226 0%, #071424 60%); color:#e6eef8;}
+  .app{
+    max-width:980px; margin:28px auto; padding:22px; border-radius:18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    box-shadow: 0 8px 30px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.03);
+  }
+  header{display:flex; align-items:center; gap:16px; margin-bottom:18px}
+  .logo{width:56px; height:56px; border-radius:12px; display:grid; place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); font-weight:800; color:#042033}
+  h1{font-size:20px; margin:0}
+  p.subtitle{margin:0; color:var(--muted); font-size:13px}
+  .controls{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
+  button.primary{
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); border:0; color:#021118;
+    padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer;
+    box-shadow: 0 6px 18px rgba(124,92,255,0.12), inset 0 -4px 10px rgba(255,255,255,0.06);
+  }
+  button.ghost{
+    background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted);
+    padding:9px 12px; border-radius:10px; cursor:pointer;
+  }
+  .grid{
+    display:grid; grid-template-columns: 1fr 360px; gap:18px; margin-top:20px;
+  }
+  /* Left: gameplay */
+  .panel{background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.01)); padding:18px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.03)}
+  .question-area{min-height:240px; display:flex; flex-direction:column; gap:12px; justify-content:center; align-items:stretch}
+  .question{font-size:18px; font-weight:700}
+  .choices{display:flex; flex-direction:column; gap:10px; margin-top:8px}
+  .choice{
+    background:var(--glass); border-radius:10px; padding:12px; cursor:pointer; border:1px solid rgba(255,255,255,0.02);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .choice:hover{transform:translateY(-4px); box-shadow:0 12px 30px rgba(2,6,23,0.5)}
+  .choice.correct{background:linear-gradient(90deg, rgba(38,208,123,0.12), rgba(124,92,255,0.03)); border-color:rgba(38,208,123,0.18)}
+  .choice.wrong{background:linear-gradient(90deg, rgba(255,107,107,0.08), rgba(3,8,15,0.03)); border-color:rgba(255,107,107,0.14)}
+  .meta{display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:13px}
+  .progress{height:10px; background:rgba(255,255,255,0.03); border-radius:10px; overflow:hidden; width:100%}
+  .progress > i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0%}
+  /* Right: sidebar */
+  .sidebar{display:flex; flex-direction:column; gap:12px}
+  .score{display:flex; gap:12px; align-items:center; justify-content:space-between}
+  .score .big{font-size:28px; font-weight:800; color:var(--accent2)}
+  .badge{padding:8px 10px; background:rgba(255,255,255,0.02); border-radius:10px; font-weight:700; color:var(--muted)}
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .stat{background:rgba(255,255,255,0.02); padding:10px; border-radius:10px; text-align:center}
+  footer{margin-top:14px; display:flex; gap:10px; justify-content:space-between; align-items:center; color:var(--muted); font-size:13px}
+  .flashcard{display:grid; gap:10px; align-items:center; justify-items:center; min-height:260px}
+  .card-face{width:100%; padding:18px; border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border:1px solid rgba(255,255,255,0.03); min-height:140px; display:flex; align-items:center; justify-content:center; text-align:center}
+  .flip-btn{margin-top:6px; background:transparent; border:1px dashed rgba(255,255,255,0.04); padding:8px 12px; border-radius:10px; cursor:pointer; color:var(--muted)}
+  .small{font-size:13px; color:var(--muted)}
+  .hidden{display:none}
+  /* responsive */
+  @media (max-width:920px){
+    .grid{grid-template-columns:1fr; }
+    .sidebar{order:2}
+  }
+  /* tiny animations */
+  .sparkle{display:inline-block; transform-origin:center; animation:pop .9s ease}
+  @keyframes pop {0%{transform:scale(.88) rotate(-6deg); opacity:0} 60%{transform:scale(1.06) rotate(4deg); opacity:1} 100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="app" role="application" aria-label="Socialization study game">
+  <header>
+    <div class="logo" aria-hidden="true">U4</div>
+    <div>
+      <h1>Socialization — Unit 4 Study Game</h1>
+      <p class="subtitle">Playful, sassy, and scientifically sound. Choose Study Mode or Game Mode to get that A.</p>
+      <div class="controls" style="margin-top:8px">
+        <button id="startGame" class="primary" aria-pressed="false">Start Game ▶</button>
+        <button id="studyMode" class="ghost" aria-pressed="false">Study Mode (Flashcards)</button>
+        <button id="resetScores" class="ghost" title="Reset stored best score">Reset High Score</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel" id="leftPanel" aria-live="polite">
+      <!-- Game view -->
+      <div id="gameView">
+        <div class="meta" style="margin-bottom:10px">
+          <div><strong id="modeLabel">Game Mode</strong> <span class="small">— answer quick, earn points</span></div>
+          <div class="small">Time per question: <span id="timePerQ">20</span>s</div>
+        </div>
+
+        <div class="question-area">
+          <div class="question" id="questionText">Press <strong>Start Game</strong> to begin. Cute, right?</div>
+
+          <div class="choices" id="choicesContainer" role="list">
+            <!-- choices injected here -->
+          </div>
+
+          <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; margin-top:6px">
+            <div class="meta">
+              <div class="small">Question <span id="qIndex">0</span>/<span id="qTotal">0</span></div>
+            </div>
+            <div style="width:45%">
+              <div class="progress" aria-hidden="true"><i id="progressBar" style="width:0%"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:12px; align-items:center">
+          <button id="nextBtn" class="primary" style="display:none">Next →</button>
+          <button id="skipBtn" class="ghost">Skip</button>
+          <div class="small" id="feedback" style="margin-left:auto;color:var(--muted)"></div>
+        </div>
+      </div>
+
+      <!-- Study Mode view -->
+      <div id="studyView" class="hidden">
+        <div class="meta"><div><strong>Study Mode</strong> <span class="small">— flashcards</span></div></div>
+        <div class="flashcard">
+          <div class="card-face" id="flashText">Flashcard content</div>
+          <button id="flipCard" class="flip-btn">Flip</button>
+          <div style="display:flex; gap:8px">
+            <button id="prevCard" class="ghost">‹ Prev</button>
+            <button id="nextCard" class="primary">Next ›</button>
+          </div>
+          <div class="small" style="margin-top:8px">Tip: press <kbd>F</kbd> to flip, <kbd>←</kbd> / <kbd>→</kbd> to navigate</div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="panel score" aria-hidden="true">
+        <div>
+          <div class="small">Score</div>
+          <div class="big" id="score">0</div>
+        </div>
+        <div style="text-align:right">
+          <div class="small">Streak</div>
+          <div class="badge" id="streak">0</div>
+        </div>
+      </div>
+
+      <div class="panel stats" aria-hidden="true">
+        <div class="stat">
+          <div class="small">Correct</div>
+          <div id="correctCount">0</div>
+        </div>
+        <div class="stat">
+          <div class="small">Wrong</div>
+          <div id="wrongCount">0</div>
+        </div>
+      </div>
+
+      <div class="panel" id="hintPanel">
+        <div class="small" style="margin-bottom:8px"><strong>Quick Ref — Key Terms</strong></div>
+        <ul style="padding-left:18px; margin:0; color:var(--muted)">
+          <li><strong>Socialization</strong> — process of learning culture & roles</li>
+          <li><strong>Agents</strong> — Family, School, Peers, Media, Religion, Workplace</li>
+          <li><strong>Cooley</strong> — Looking-glass self</li>
+          <li><strong>Mead</strong> — Role-taking; imitation → play → game</li>
+          <li><strong>Goffman</strong> — Dramaturgy: front/back stage</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <div class="small">High Score</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px">
+          <div style="font-weight:800; color:var(--accent)"><span id="bestScore">0</span> pts</div>
+          <div class="small" id="lastPlay">—</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="small">Controls</div>
+        <ul style="margin:8px 0 0 18px; color:var(--muted); padding:0;">
+          <li>Click choices or press <strong>1–4</strong></li>
+          <li>Press <kbd>Space</kbd> to start/pause</li>
+          <li>Use Study Mode for quick review</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="small">Made with sarcasm + science. Good luck, you brilliant sociologist.</div>
+    <div class="small">Version 1 — Offline</div>
+  </footer>
+</div>
+
+<script>
+/*
+  Socialization Unit 4 — Game & Study Mode
+  - Multiple-choice quiz with timer, streaks, points
+  - Flashcard study mode
+  - High score saved to localStorage
+  - Keyboard accessibility
+*/
+
+/* ======= QUESTIONS (pulled from your study guide) ======= */
+/* Each question: {q, choices:[], a: index (0-based), hint: optional, points: number} */
+const QUESTIONS = [
+  { q: "What is socialization?",
+    choices: [
+      "The process of biological growth",
+      "The process by which we learn culture, norms, values, and roles",
+      "Punishing rule-breakers",
+      "A government program"
+    ], a:1, hint:"It teaches you how to be part of a group.", points:10 },
+
+  { q: "Which is NOT typically considered an agent of socialization?",
+    choices: ["Family","Peers","Gravity","Mass media"], a:2, hint:"One of these is a physical force.", points:8 },
+
+  { q: "Charles Cooley's 'looking-glass self' emphasizes:",
+    choices: [
+      "Genetics determine personality",
+      "We develop self-concept by imagining how others see us",
+      "Religion shapes morals",
+      "The economy shapes identity"
+    ], a:1, hint:"Think mirror, baby.", points:10 },
+
+  { q: "George Herbert Mead described stages of self development. Which is the correct order?",
+    choices: [
+      "Play → Imitation → Game",
+      "Imitation → Play → Game",
+      "Game → Play → Imitation",
+      "Game → Imitation → Play"
+    ], a:1, hint:"Start with copying, then pretend, then coordinate roles.", points:10 },
+
+  { q: "Erving Goffman's dramaturgical approach compares social life to:",
+    choices: ["A sport","A stage/theatre","A machine","A classroom"], a:1, hint:"Impression management!", points:9 },
+
+  { q: "Which best describes 'hidden curriculum' in schools?",
+    choices: [
+      "Secret lessons taught at midnight",
+      "Informal lessons about norms, obedience, and competition",
+      "The study of covert government programs",
+      "An advanced math program"
+    ], a:1, hint:"Not what is on the lesson plan.", points:9 },
+
+  { q: "Resocialization happens when:",
+    choices: [
+      "Someone is socialized for the first time",
+      "Old norms are replaced and new ones learned, e.g., military or prison",
+      "A child learns language",
+      "A person changes jobs within the same company"
+    ], a:1, hint:"Think total institutions.", points:11 },
+
+  { q: "Which agent typically has the strongest early influence on a child?",
+    choices: ["Peers","Family","Workplace","Mass media"], a:1, hint:"Who feeds the baby?", points:10 },
+
+  { q: "Role strain is:",
+    choices: [
+      "Confusion about what role to play",
+      "Tension among roles connected to one single status",
+      "Tension between two different statuses",
+      "When two people fight over the same role"
+    ], a:1, hint:"Within one role, too many demands.", points:8 },
+
+  { q: "Anticipatory socialization is:",
+    choices: [
+      "Learning new norms for a role you expect to enter",
+      "Being punished before committing a crime",
+      "A child's playtime games",
+      "Watching reality TV for tips"
+    ], a:0, hint:"Practice for the future self.", points:9 },
+
+  { q: "Which theory most directly emphasizes interaction and role-taking?",
+    choices: ["Functionalism","Symbolic Interactionism","Conflict Theory","Structuralism"], a:1, hint:"Micro-level focus on meaning and interaction.", points:10 },
+
+  { q: "Front stage vs back stage (Goffman): front stage equals:",
+    choices: [
+      "Private thoughts",
+      "Public performance where you manage impressions",
+      "A storage room backstage",
+      "An actor's break time"
+    ], a:1, hint:"Where you smile for the audience.", points:9 },
+];
+
+/* ======= State ======= */
+let state = {
+  mode: 'game', // 'game' or 'study'
+  order: [], // indices of questions in current round
+  currentQ: 0,
+  timer: null,
+  timeLeft: 20,
+  timePerQuestion: 20,
+  score: 0,
+  streak: 0,
+  correct: 0,
+  wrong: 0,
+  playing: false,
+  flashIndex: 0,
+  highScore: {score:0, date:null}
+};
+
+/* ======= DOM ======= */
+const els = {
+  startGame: document.getElementById('startGame'),
+  studyMode: document.getElementById('studyMode'),
+  resetScores: document.getElementById('resetScores'),
+  leftPanel: document.getElementById('leftPanel'),
+  questionText: document.getElementById('questionText'),
+  choicesContainer: document.getElementById('choicesContainer'),
+  qIndex: document.getElementById('qIndex'),
+  qTotal: document.getElementById('qTotal'),
+  progressBar: document.getElementById('progressBar'),
+  nextBtn: document.getElementById('nextBtn'),
+  skipBtn: document.getElementById('skipBtn'),
+  feedback: document.getElementById('feedback'),
+  score: document.getElementById('score'),
+  streak: document.getElementById('streak'),
+  correctCount: document.getElementById('correctCount'),
+  wrongCount: document.getElementById('wrongCount'),
+  bestScore: document.getElementById('bestScore'),
+  lastPlay: document.getElementById('lastPlay'),
+  studyView: document.getElementById('studyView'),
+  gameView: document.getElementById('gameView'),
+  flashText: document.getElementById('flashText'),
+  flipCard: document.getElementById('flipCard'),
+  prevCard: document.getElementById('prevCard'),
+  nextCard: document.getElementById('nextCard'),
+  modeLabel: document.getElementById('modeLabel'),
+  timePerQ: document.getElementById('timePerQ')
+};
+
+/* ======= Utilities ======= */
+function randOrder(n){ const arr=Array.from({length:n},(_,i)=>i); for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr;}
+function formatDateISO(d){ return new Date(d).toLocaleString(); }
+function saveHighScore(){
+  const payload = {score: state.highScore.score, date: state.highScore.date};
+  try{ localStorage.setItem('u4_social_high', JSON.stringify(payload)); } catch(e){}
+}
+function loadHighScore(){
+  try{
+    const raw = localStorage.getItem('u4_social_high');
+    if(raw){ const p = JSON.parse(raw); state.highScore = p; }
+  }catch(e){}
+}
+
+/* ======= Rendering ======= */
+function renderSidebar(){
+  els.score.textContent = state.score;
+  els.streak.textContent = state.streak;
+  els.correctCount.textContent = state.correct;
+  els.wrongCount.textContent = state.wrong;
+  els.bestScore.textContent = state.highScore.score || 0;
+  els.lastPlay.textContent = state.highScore.date ? new Date(state.highScore.date).toLocaleString() : '—';
+  els.timePerQ.textContent = state.timePerQuestion;
+}
+
+function showGameView(){
+  state.mode='game';
+  els.modeLabel.textContent = 'Game Mode';
+  els.studyView.classList.add('hidden');
+  els.gameView.classList.remove('hidden');
+  els.studyMode.setAttribute('aria-pressed','false');
+  els.startGame.setAttribute('aria-pressed','true');
+}
+
+function showStudyView(){
+  state.mode='study';
+  els.modeLabel.textContent = 'Study Mode';
+  els.studyView.classList.remove('hidden');
+  els.gameView.classList.add('hidden');
+  els.studyMode.setAttribute('aria-pressed','true');
+  els.startGame.setAttribute('aria-pressed','false');
+  renderFlashcard();
+}
+
+/* ======= Game Logic ======= */
+function startGame(){
+  // reset state for a fresh round
+  state.order = randOrder(QUESTIONS.length);
+  state.currentQ = 0;
+  state.score = 0;
+  state.streak = 0;
+  state.correct = 0;
+  state.wrong = 0;
+  state.playing = true;
+  state.timePerQuestion = 20; // seconds
+  state.timeLeft = state.timePerQuestion;
+  renderSidebar();
+  showGameView();
+  renderQuestion();
+  startTimer();
+  els.nextBtn.style.display='none';
+  els.feedback.textContent = "Give it your best sociological serve!";
+}
+
+function renderQuestion(){
+  const total = QUESTIONS.length;
+  els.qTotal.textContent = total;
+  els.qIndex.textContent = state.currentQ + 1;
+  const qi = state.order[state.currentQ];
+  const Q = QUESTIONS[qi];
+  els.questionText.textContent = Q.q;
+  els.choicesContainer.innerHTML = '';
+  Q.choices.forEach((c,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.setAttribute('role','listitem');
+    btn.setAttribute('data-index', i);
+    btn.innerHTML = `<span style="font-weight:700">${String.fromCharCode(65+i)}.</span> <span style="margin-left:8px">${c}</span>`;
+    btn.addEventListener('click', () => handleChoice(i));
+    els.choicesContainer.appendChild(btn);
+  });
+  // progress bar
+  const progressPct = Math.round((state.currentQ / total) * 100);
+  els.progressBar.style.width = progressPct + '%';
+  // reset timer
+  state.timeLeft = state.timePerQuestion;
+  updateTimerUI();
+  // hide next
+  els.nextBtn.style.display='none';
+}
+
+function handleChoice(choiceIndex){
+  if(!state.playing) return;
+  const qi = state.order[state.currentQ];
+  const Q = QUESTIONS[qi];
+  const correct = (choiceIndex === Q.a);
+  const choiceButtons = Array.from(els.choicesContainer.children);
+
+  // lock input
+  state.playing = false;
+  stopTimer();
+
+  // mark buttons
+  choiceButtons.forEach((el, idx) => {
+    el.classList.remove('correct','wrong');
+    el.disabled = true;
+    if(idx === Q.a){ el.classList.add('correct'); }
+    if(idx === choiceIndex && idx !== Q.a){ el.classList.add('wrong'); }
+  });
+
+  if(correct){
+    const earned = Q.points + Math.floor(state.timeLeft); // reward speed
+    state.score += earned;
+    state.streak += 1;
+    state.correct += 1;
+    els.feedback.innerHTML = `<span style="color:var(--good); font-weight:700">${randomPraise()}</span> +${earned} pts`;
+  } else {
+    state.streak = 0;
+    state.wrong += 1;
+    els.feedback.innerHTML = `<span style="color:var(--bad); font-weight:700">Oops!</span> (${Q.choices[Q.a]}) — ${Q.hint || 'Review that term.'}`;
+  }
+  renderSidebar();
+
+  // check high score
+  if(state.score > (state.highScore.score || 0)){
+    state.highScore.score = state.score;
+    state.highScore.date = new Date().toISOString();
+    saveHighScore();
+  }
+
+  // show next button
+  els.nextBtn.style.display='inline-block';
+}
+
+function nextQuestion(){
+  // advance or finish
+  state.currentQ++;
+  if(state.currentQ >= state.order.length){
+    finishRound();
+    return;
+  }
+  // prepare next
+  state.playing = true;
+  renderQuestion();
+  startTimer();
+  els.feedback.textContent = '';
+}
+
+function skipQuestion(){
+  if(!state.playing) return;
+  stopTimer();
+  state.playing = false;
+  state.streak = 0;
+  state.wrong += 1;
+  renderSidebar();
+  // reveal correct answer briefly
+  const qi = state.order[state.currentQ];
+  const Q = QUESTIONS[qi];
+  Array.from(els.choicesContainer.children).forEach((el, idx) => {
+    if(idx === Q.a) el.classList.add('correct');
+    el.disabled = true;
+  });
+  els.feedback.textContent = `Skipped — correct: ${Q.choices[Q.a]}`;
+  els.nextBtn.style.display='inline-block';
+}
+
+function finishRound(){
+  stopTimer();
+  state.playing = false;
+  els.questionText.textContent = `Round complete! Final score: ${state.score} pts`;
+  els.choicesContainer.innerHTML = '';
+  els.qIndex.textContent = state.order.length;
+  els.progressBar.style.width = '100%';
+  els.feedback.innerHTML = `<span class="sparkle">✨</span> High score: ${state.highScore.score} pts`;
+  // update saved high score displayed
+  renderSidebar();
+}
+
+/* ======= Timer ======= */
+function startTimer(){
+  stopTimer();
+  state.timeLeft = state.timePerQuestion;
+  updateTimerUI();
+  state.timer = setInterval(() => {
+    state.timeLeft--;
+    updateTimerUI();
+    if(state.timeLeft <= 0){
+      // time up
+      clearInterval(state.timer);
+      timeUp();
+    }
+  }, 1000);
+}
+function stopTimer(){
+  if(state.timer) clearInterval(state.timer);
+  state.timer = null;
+}
+function updateTimerUI(){
+  const pct = Math.max(0, Math.floor((state.timeLeft / state.timePerQuestion) * 100));
+  // small visual trick: show as part of progress bar at top? We'll update the choices' opacity.
+  els.progressBar.style.width = Math.round((state.currentQ / QUESTIONS.length) * 100) + '%';
+  // display remaining time in feedback when playing
+  if(state.playing){
+    els.feedback.textContent = `⏱ ${state.timeLeft}s left`;
+  }
+}
+
+/* ======= Timer expired ======= */
+function timeUp(){
+  // mark as wrong, reveal answer
+  state.playing = false;
+  state.streak = 0;
+  state.wrong++;
+  const qi = state.order[state.currentQ];
+  const Q = QUESTIONS[qi];
+  Array.from(els.choicesContainer.children).forEach((el, idx) => {
+    if(idx === Q.a) el.classList.add('correct');
+    el.disabled = true;
+  });
+  els.feedback.innerHTML = `<span style="color:var(--bad); font-weight:700">Time's up!</span> Correct: ${Q.choices[Q.a]}`;
+  renderSidebar();
+  els.nextBtn.style.display='inline-block';
+}
+
+/* ======= Flashcards / Study Mode ======= */
+function renderFlashcard(){
+  const fc = state.flashIndex;
+  const q = QUESTIONS[fc % QUESTIONS.length];
+  // show front: term / question
+  els.flashText.textContent = q.q;
+  els.flipCard.textContent = 'Flip';
+}
+function flipFlashcard(){
+  const q = QUESTIONS[state.flashIndex % QUESTIONS.length];
+  // show either answer or question; here flipping toggles to show explanation/choices
+  if(els.flipCard.dataset.showing === 'back'){
+    // show front
+    renderFlashcard();
+    els.flipCard.dataset.showing = 'front';
+    els.flipCard.textContent = 'Flip';
+  } else {
+    // back: show answer + short hint
+    const A = q.choices[q.a];
+els.flashText.textContent = `${A}\n\n${q.hint || ''}`;
+    els.flipCard.dataset.showing = 'back';
+    els.flipCard.textContent = 'Flip to Q';
+  }
+}
+function nextFlash(n=1){
+  state.flashIndex = (state.flashIndex + n + QUESTIONS.length) % QUESTIONS.length;
+  els.flipCard.dataset.showing = 'front';
+  renderFlashcard();
+}
+function prevFlash(){ nextFlash(-1); }
+
+/* ======= Small helpers ======= */
+function randomPraise(){
+  const arr = ["Nice!","Sick brain energy!","Yaaas!","On point!","Look at you!"];
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+/* ======= Events & Keyboard ======= */
+els.startGame.addEventListener('click', () => { showGameView(); startGame(); });
+els.studyMode.addEventListener('click', () => { showStudyView(); });
+els.resetScores.addEventListener('click', () => {
+  if(confirm('Reset saved high score?')){ state.highScore = {score:0, date:null}; saveHighScore(); renderSidebar(); alert('High score reset. You can do better (duh).'); }
+});
+
+els.nextBtn.addEventListener('click', () => {
+  if(state.mode !== 'game') return;
+  nextQuestion();
+});
+els.skipBtn.addEventListener('click', () => { if(state.mode==='game') skipQuestion(); });
+
+els.flipCard.addEventListener('click', flipFlashcard);
+els.nextCard.addEventListener('click', () => nextFlash(1));
+els.prevCard.addEventListener('click', prevFlash);
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', (e) => {
+  // If study mode active:
+  if(state.mode === 'study' && !els.studyView.classList.contains('hidden')){
+    if(e.key === 'ArrowRight'){ nextFlash(1); e.preventDefault(); }
+    if(e.key === 'ArrowLeft'){ prevFlash(); e.preventDefault(); }
+    if(e.key.toLowerCase() === 'f'){ flipFlashcard(); e.preventDefault(); }
+    return;
+  }
+  // Toggle modes
+  if(e.code === 'Space'){ // start/pause game
+    e.preventDefault();
+    if(state.playing){ stopTimer(); state.playing=false; els.feedback.textContent='Paused'; }
+    else { if(state.currentQ===0 && state.order.length===0) startGame(); else { startTimer(); state.playing=true; } }
+    return;
+  }
+  // Numeric answers 1-4
+  if(['1','2','3','4'].includes(e.key) && state.mode==='game' && state.playing){
+    const idx = parseInt(e.key,10)-1;
+    // simulate click on choice if exists
+    const btn = els.choicesContainer.children[idx];
+    if(btn) btn.click();
+  }
+  // navigation
+  if(e.key === 'Enter' && !state.playing && state.mode==='game'){ // press enter to go next after answer
+    if(els.nextBtn.style.display !== 'none') nextQuestion();
+  }
+});
+
+/* ======= Init ======= */
+function init(){
+  // pre-load high score
+  loadHighScore();
+  renderSidebar();
+  // default view: show study/gamemode toggle available, but start in idle
+  showGameView();
+  // initialize study flash index
+  state.flashIndex = 0;
+  // prefill flashcard text
+  renderFlashcard();
+  // set qTotal initial
+  els.qTotal.textContent = QUESTIONS.length;
+  // keyboard hint accessible
+  // a little responsive behavior already in CSS
+}
+init();
+
+/* ======= Accessibility / Clean-up when leaving ======= */
+window.addEventListener('beforeunload', () => {
+  stopTimer();
+  saveHighScore();
+});
+</script>
